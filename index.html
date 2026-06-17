@@ -1,0 +1,817 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>刘恩诚 | Creative Technologist</title>
+<style>
+  :root { color-scheme: dark; }
+
+  @import url('https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@300;400;500;600;700&family=Syne:wght@400;500;600;700;800&display=swap');
+
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  body {
+    font-family: 'Space Grotesk', sans-serif;
+    background: #050510;
+    color: #e0e0e0;
+    overflow-x: hidden;
+    cursor: none;
+  }
+
+  /* Custom cursor */
+  .cursor {
+    width: 20px; height: 20px;
+    border: 2px solid rgba(120, 200, 255, 0.8);
+    border-radius: 50%;
+    position: fixed;
+    pointer-events: none;
+    z-index: 9999;
+    mix-blend-mode: difference;
+    transition: width 0.3s, height 0.3s, border-color 0.3s;
+  }
+  .cursor-dot {
+    width: 4px; height: 4px;
+    background: #78c8ff;
+    border-radius: 50%;
+    position: fixed;
+    pointer-events: none;
+    z-index: 9999;
+  }
+  .cursor.hover { width: 50px; height: 50px; border-color: #ff6b9d; }
+
+  /* Three.js canvas */
+  #fluid-bg {
+    position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+    z-index: 0; pointer-events: none;
+  }
+
+  /* Noise overlay */
+  .noise {
+    position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+    background: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.65' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noise)' opacity='0.03'/%3E%3C/svg%3E");
+    z-index: 1; pointer-events: none; opacity: 0.4;
+  }
+
+  /* Main container */
+  .main {
+    position: relative; z-index: 2;
+    min-height: 100vh;
+  }
+
+  /* Navigation */
+  nav {
+    position: fixed; top: 0; width: 100%;
+    padding: 2rem 4rem;
+    display: flex; justify-content: space-between; align-items: center;
+    z-index: 100;
+    mix-blend-mode: difference;
+  }
+  .logo {
+    font-family: 'Syne', sans-serif;
+    font-size: 1.8rem; font-weight: 800;
+    letter-spacing: 0.15em;
+    color: #fff;
+    text-decoration: none;
+    position: relative;
+  }
+  .logo::after {
+    content: ''; position: absolute; bottom: -4px; left: 0;
+    width: 0; height: 2px; background: #78c8ff;
+    transition: width 0.6s cubic-bezier(0.16, 1, 0.3, 1);
+  }
+  .logo:hover::after { width: 100%; }
+  .nav-links { display: flex; gap: 2.5rem; list-style: none; }
+  .nav-links a {
+    color: #fff; text-decoration: none;
+    font-size: 0.85rem; font-weight: 500;
+    letter-spacing: 0.1em; text-transform: uppercase;
+    position: relative; padding: 0.3rem 0;
+    transition: color 0.4s;
+  }
+  .nav-links a::before {
+    content: ''; position: absolute; bottom: 0; left: 0;
+    width: 100%; height: 1px; background: #78c8ff;
+    transform: scaleX(0); transform-origin: right;
+    transition: transform 0.5s cubic-bezier(0.16, 1, 0.3, 1);
+  }
+  .nav-links a:hover::before { transform: scaleX(1); transform-origin: left; }
+
+  /* Hero section */
+  .hero {
+    min-height: 100vh;
+    display: flex; align-items: center;
+    padding: 0 4rem;
+    position: relative;
+  }
+  .hero-content { max-width: 800px; }
+  .hero-tag {
+    font-size: 0.75rem; letter-spacing: 0.3em;
+    text-transform: uppercase; color: #78c8ff;
+    margin-bottom: 1.5rem; opacity: 0;
+    animation: fadeSlideUp 0.8s 0.3s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+  }
+  .hero-title {
+    font-family: 'Syne', sans-serif;
+    font-size: clamp(3.5rem, 8vw, 7rem);
+    font-weight: 800; line-height: 0.95;
+    color: #fff; margin-bottom: 1.5rem;
+    overflow: hidden;
+  }
+  .hero-title .line {
+    display: block; overflow: hidden;
+  }
+  .hero-title .line span {
+    display: block;
+    animation: revealWord 1.2s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+    transform: translateY(110%);
+  }
+  .hero-title .line:nth-child(1) span { animation-delay: 0.5s; }
+  .hero-title .line:nth-child(2) span { animation-delay: 0.7s; }
+  .hero-title .line:nth-child(3) span { animation-delay: 0.9s; }
+  .hero-subtitle {
+    font-size: 1.1rem; line-height: 1.7;
+    color: rgba(255,255,255,0.5); max-width: 500px;
+    opacity: 0;
+    animation: fadeSlideUp 0.8s 1.3s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+  }
+  .scroll-indicator {
+    position: absolute; bottom: 3rem; left: 50%; transform: translateX(-50%);
+    display: flex; flex-direction: column; align-items: center; gap: 0.5rem;
+    opacity: 0;
+    animation: fadeSlideUp 0.8s 1.6s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+  }
+  .scroll-line {
+    width: 1px; height: 60px; background: linear-gradient(to bottom, #78c8ff, transparent);
+    animation: scrollPulse 2s ease-in-out infinite;
+  }
+  .scroll-text {
+    font-size: 0.65rem; letter-spacing: 0.3em;
+    text-transform: uppercase; color: rgba(255,255,255,0.4);
+  }
+
+  /* Work section */
+  .section { padding: 8rem 4rem; position: relative; }
+  .section-header {
+    display: flex; align-items: baseline; gap: 2rem;
+    margin-bottom: 5rem;
+  }
+  .section-number {
+    font-family: 'Syne', sans-serif;
+    font-size: 1.2rem; font-weight: 700;
+    color: #78c8ff;
+  }
+  .section-title {
+    font-family: 'Syne', sans-serif;
+    font-size: clamp(2.5rem, 5vw, 4rem);
+    font-weight: 700; color: #fff;
+    line-height: 1;
+  }
+
+  /* Project grid - asymmetric */
+  .projects {
+    display: grid;
+    grid-template-columns: repeat(12, 1fr);
+    gap: 1.5rem;
+    grid-auto-rows: minmax(200px, auto);
+  }
+  .project-card {
+    position: relative; overflow: hidden;
+    border-radius: 4px;
+    cursor: pointer;
+    transition: transform 0.6s cubic-bezier(0.16, 1, 0.3, 1);
+  }
+  .project-card:hover { transform: scale(1.02); z-index: 10; }
+  .project-card:nth-child(1) { grid-column: 1 / 7; grid-row: 1 / 3; }
+  .project-card:nth-child(2) { grid-column: 7 / 13; grid-row: 1 / 2; }
+  .project-card:nth-child(3) { grid-column: 7 / 10; grid-row: 2 / 3; }
+  .project-card:nth-child(4) { grid-column: 10 / 13; grid-row: 2 / 3; }
+  .project-card:nth-child(5) { grid-column: 1 / 5; grid-row: 3 / 4; }
+  .project-card:nth-child(6) { grid-column: 5 / 13; grid-row: 3 / 4; }
+
+  .project-bg {
+    width: 100%; height: 100%; object-fit: cover;
+    transition: transform 0.8s cubic-bezier(0.16, 1, 0.3, 1);
+  }
+  .project-card:hover .project-bg { transform: scale(1.08); }
+  .project-overlay {
+    position: absolute; inset: 0;
+    background: linear-gradient(to top, rgba(5,5,16,0.9) 0%, transparent 60%);
+    display: flex; flex-direction: column; justify-content: flex-end;
+    padding: 2rem;
+    transition: background 0.5s;
+  }
+  .project-card:hover .project-overlay {
+    background: linear-gradient(to top, rgba(5,5,16,0.95) 0%, rgba(5,5,16,0.2) 100%);
+  }
+  .project-category {
+    font-size: 0.65rem; letter-spacing: 0.25em;
+    text-transform: uppercase; color: #78c8ff;
+    margin-bottom: 0.5rem;
+  }
+  .project-title {
+    font-family: 'Syne', sans-serif;
+    font-size: 1.5rem; font-weight: 700;
+    color: #fff;
+  }
+
+  /* About section */
+  .about-grid {
+    display: grid;
+    grid-template-columns: repeat(12, 1fr);
+    gap: 2rem; align-items: start;
+  }
+  .about-text {
+    grid-column: 1 / 6;
+    font-size: 1.1rem; line-height: 1.8;
+    color: rgba(255,255,255,0.6);
+  }
+  .about-text strong { color: #fff; font-weight: 600; }
+  .about-stats {
+    grid-column: 7 / 13;
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 2rem;
+  }
+  .stat {
+    padding: 2rem;
+    border: 1px solid rgba(255,255,255,0.08);
+    border-radius: 4px;
+    transition: border-color 0.5s, transform 0.5s cubic-bezier(0.16, 1, 0.3, 1);
+  }
+  .stat:hover { border-color: #78c8ff; transform: translateY(-4px); }
+  .stat-number {
+    font-family: 'Syne', sans-serif;
+    font-size: 3rem; font-weight: 800;
+    color: #78c8ff; line-height: 1;
+    margin-bottom: 0.5rem;
+  }
+  .stat-label {
+    font-size: 0.8rem; letter-spacing: 0.1em;
+    text-transform: uppercase; color: rgba(255,255,255,0.5);
+  }
+
+  /* Reel section */
+  .reel-section { padding: 0 4rem 8rem; }
+  .reel-container {
+    position: relative; width: 100%;
+    aspect-ratio: 16/9;
+    background: #0a0a1a;
+    border-radius: 4px; overflow: hidden;
+  }
+  .reel-placeholder {
+    width: 100%; height: 100%;
+    display: flex; align-items: center; justify-content: center;
+    flex-direction: column; gap: 1.5rem;
+    background: radial-gradient(ellipse at center, #0d0d2a 0%, #050510 70%);
+    position: relative; overflow: hidden;
+  }
+  .reel-placeholder::before {
+    content: ''; position: absolute; inset: 0;
+    background: repeating-linear-gradient(
+      0deg, transparent, transparent 2px,
+      rgba(120,200,255,0.03) 2px, rgba(120,200,255,0.03) 4px
+    );
+  }
+  .play-btn {
+    width: 80px; height: 80px;
+    border: 2px solid #78c8ff; border-radius: 50%;
+    display: flex; align-items: center; justify-content: center;
+    cursor: pointer; position: relative; z-index: 2;
+    transition: all 0.5s cubic-bezier(0.16, 1, 0.3, 1);
+  }
+  .play-btn:hover {
+    background: #78c8ff; transform: scale(1.1);
+    box-shadow: 0 0 60px rgba(120,200,255,0.3);
+  }
+  .play-btn::after {
+    content: ''; width: 0; height: 0;
+    border-left: 20px solid #78c8ff;
+    border-top: 12px solid transparent;
+    border-bottom: 12px solid transparent;
+    margin-left: 5px; transition: border-left-color 0.5s;
+  }
+  .play-btn:hover::after { border-left-color: #050510; }
+  .reel-label {
+    font-size: 0.75rem; letter-spacing: 0.3em;
+    text-transform: uppercase; color: rgba(255,255,255,0.4);
+    z-index: 2;
+  }
+
+  /* Contact */
+  .contact-section { padding: 6rem 4rem; text-align: center; }
+  .contact-title {
+    font-family: 'Syne', sans-serif;
+    font-size: clamp(2.5rem, 5vw, 4rem);
+    font-weight: 700; color: #fff;
+    margin-bottom: 1rem;
+  }
+  .contact-email {
+    font-family: 'Syne', sans-serif;
+    font-size: 2rem; font-weight: 600;
+    color: #78c8ff; text-decoration: none;
+    display: inline-block; margin-bottom: 2rem;
+    position: relative;
+    transition: color 0.4s;
+  }
+  .contact-email::after {
+    content: ''; position: absolute; bottom: -4px; left: 0;
+    width: 100%; height: 2px; background: #ff6b9d;
+    transform: scaleX(0); transform-origin: right;
+    transition: transform 0.5s cubic-bezier(0.16, 1, 0.3, 1);
+  }
+  .contact-email:hover { color: #ff6b9d; }
+  .contact-email:hover::after { transform: scaleX(1); transform-origin: left; }
+  .social-links { display: flex; justify-content: center; gap: 2rem; list-style: none; }
+  .social-links a {
+    color: rgba(255,255,255,0.5); text-decoration: none;
+    font-size: 0.8rem; letter-spacing: 0.15em;
+    text-transform: uppercase;
+    transition: color 0.4s;
+  }
+  .social-links a:hover { color: #78c8ff; }
+
+  /* Footer */
+  footer {
+    padding: 2rem 4rem;
+    display: flex; justify-content: space-between;
+    font-size: 0.7rem; color: rgba(255,255,255,0.3);
+    letter-spacing: 0.1em;
+  }
+
+  /* Glitch text effect */
+  @keyframes glitch {
+    0%, 100% { transform: translate(0); }
+    20% { transform: translate(-2px, 2px); }
+    40% { transform: translate(2px, -2px); }
+    60% { transform: translate(-1px, -1px); }
+    80% { transform: translate(1px, 1px); }
+  }
+
+  /* Animations */
+  @keyframes revealWord {
+    0% { transform: translateY(110%); }
+    100% { transform: translateY(0); }
+  }
+  @keyframes fadeSlideUp {
+    0% { opacity: 0; transform: translateY(30px); }
+    100% { opacity: 1; transform: translateY(0); }
+  }
+  @keyframes scrollPulse {
+    0%, 100% { opacity: 0.3; transform: scaleY(1); }
+    50% { opacity: 1; transform: scaleY(1.3); }
+  }
+
+  /* Reveal on scroll */
+  .reveal {
+    opacity: 0; transform: translateY(60px);
+    transition: opacity 1s cubic-bezier(0.16, 1, 0.3, 1),
+                transform 1s cubic-bezier(0.16, 1, 0.3, 1);
+  }
+  .reveal.visible { opacity: 1; transform: translateY(0); }
+
+  /* Responsive */
+  @media (max-width: 768px) {
+    nav { padding: 1.5rem; }
+    .nav-links { display: none; }
+    .hero { padding: 0 1.5rem; }
+    .section { padding: 4rem 1.5rem; }
+    .projects { grid-template-columns: 1fr; gap: 1rem; }
+    .project-card:nth-child(n) { grid-column: 1; grid-row: auto; min-height: 250px; }
+    .about-text { grid-column: 1 / -1; }
+    .about-stats { grid-column: 1 / -1; grid-template-columns: 1fr 1fr; }
+    .reel-section { padding: 0 1.5rem 4rem; }
+    .contact-section { padding: 4rem 1.5rem; }
+    .cursor, .cursor-dot { display: none; }
+    body { cursor: auto; }
+  }
+</style>
+</head>
+<body>
+
+<div class="cursor"></div>
+<div class="cursor-dot"></div>
+<canvas id="fluid-bg"></canvas>
+<div class="noise"></div>
+
+<nav>
+  <a href="#" class="logo">LEC</a>
+  <ul class="nav-links">
+    <li><a href="#work">作品</a></li>
+    <li><a href="#about">关于</a></li>
+    <li><a href="#reel">集锦</a></li>
+    <li><a href="#contact">联系</a></li>
+  </ul>
+</nav>
+
+<main class="main">
+  <section class="hero">
+    <div class="hero-content">
+      <p class="hero-tag">Creative Technologist &bull; Software Engineer &bull; Visual Storyteller</p>
+      <h1 class="hero-title">
+        <span class="line"><span>刘恩诚</span></span>
+        <span class="line"><span>Code &amp; Creativity</span></span>
+        <span class="line"><span>Converge</span></span>
+      </h1>
+      <p class="hero-subtitle">
+        软件工程背景，痴迷于技术与视觉表达的交叉点。
+        从代码到影像，每一帧都是逻辑与美学的碰撞。
+      </p>
+    </div>
+    <div class="scroll-indicator">
+      <div class="scroll-line"></div>
+      <span class="scroll-text">向下探索</span>
+    </div>
+  </section>
+
+  <section class="section reveal" id="work">
+    <div class="section-header">
+      <span class="section-number">01</span>
+      <h2 class="section-title">Projects<br>&amp; Works</h2>
+    </div>
+    <div class="projects">
+      <div class="project-card">
+        <div class="project-bg" style="background: linear-gradient(135deg, #1a1a3e 0%, #2d1b4e 50%, #0d0d2a 100%);"></div>
+        <div class="project-overlay">
+          <span class="project-category">全栈开发</span>
+          <h3 class="project-title">智能影像管理系统</h3>
+        </div>
+      </div>
+      <div class="project-card">
+        <div class="project-bg" style="background: linear-gradient(135deg, #1e3a3a 0%, #1a2d4e 50%, #0d0d2a 100%);"></div>
+        <div class="project-overlay">
+          <span class="project-category">视频创作</span>
+          <h3 class="project-title">城市脉搏 &mdash; 银川延时摄影</h3>
+        </div>
+      </div>
+      <div class="project-card">
+        <div class="project-bg" style="background: linear-gradient(135deg, #3a1a2e 0%, #2d1b4e 50%, #0d0d2a 100%);"></div>
+        <div class="project-overlay">
+          <span class="project-category">创意编程</span>
+          <h3 class="project-title">粒子流体视觉生成器</h3>
+        </div>
+      </div>
+      <div class="project-card">
+        <div class="project-bg" style="background: linear-gradient(135deg, #2e1a3a 0%, #1a2d4e 50%, #0d0d2a 100%);"></div>
+        <div class="project-overlay">
+          <span class="project-category">AI 应用</span>
+          <h3 class="project-title">AI 视频风格迁移工具</h3>
+        </div>
+      </div>
+      <div class="project-card">
+        <div class="project-bg" style="background: linear-gradient(135deg, #1a3a2e 0%, #2d1b4e 50%, #0d0d2a 100%);"></div>
+        <div class="project-overlay">
+          <span class="project-category">前端实验</span>
+          <h3 class="project-title">3D WebGL 交互叙事</h3>
+        </div>
+      </div>
+      <div class="project-card">
+        <div class="project-bg" style="background: linear-gradient(135deg, #3a2e1a 0%, #1a2d4e 50%, #0d0d2a 100%);"></div>
+        <div class="project-overlay">
+          <span class="project-category">开源贡献</span>
+          <h3 class="project-title">视频剪辑自动化脚本</h3>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section class="section reveal" id="about">
+    <div class="section-header">
+      <span class="section-number">02</span>
+      <h2 class="section-title">About<br>Me</h2>
+    </div>
+    <div class="about-grid">
+      <div class="about-text">
+        <p>
+          我是 <strong>刘恩诚</strong>，一名热爱技术与创意表达的计算机专业研究生。
+          出生于河北衡水，11 岁后在宁夏银川长大——西北的辽阔大地塑造了我对光影与色彩的敏锐感知。
+        </p>
+        <p style="margin-top:1.5rem;">
+          本科毕业于辽宁工程技术大学软件学院软件工程专业（2021–2025），目前就读于河北科技大学信息科学与工程学院计算机技术方向（2025–至今）。我的兴趣横跨软件开发、计算机视觉与视频创作，相信代码可以像影像一样富有感染力。
+        </p>
+        <p style="margin-top:1.5rem;">
+          在课堂之外，我热衷于将技术转化为视觉表达——无论是用代码生成粒子流体动画，还是用镜头捕捉城市与自然的瞬间。我始终在寻找理性与感性的平衡点。
+        </p>
+      </div>
+      <div class="about-stats">
+        <div class="stat">
+          <div class="stat-number">河北</div>
+          <div class="stat-label">出生地 &bull; 衡水</div>
+        </div>
+        <div class="stat">
+          <div class="stat-number">银川</div>
+          <div class="stat-label">成长之地 &bull; 宁夏</div>
+        </div>
+        <div class="stat">
+          <div class="stat-number">硕士</div>
+          <div class="stat-label">河北科技大学 &bull; 在读</div>
+        </div>
+        <div class="stat">
+          <div class="stat-number">CS</div>
+          <div class="stat-label">计算机技术方向</div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section class="reel-section reveal" id="reel">
+    <div class="section-header">
+      <span class="section-number">03</span>
+      <h2 class="section-title">Showreel<br>2026</h2>
+    </div>
+    <div class="reel-container">
+      <div class="reel-placeholder">
+        <div class="play-btn"></div>
+        <span class="reel-label">观看作品集锦 &mdash; 即将上线</span>
+      </div>
+    </div>
+  </section>
+
+  <section class="contact-section reveal" id="contact">
+    <h2 class="contact-title">保持联系<br>Say Hello</h2>
+    <a href="mailto:liuencheng467@gmail.com" class="contact-email">liuencheng467@gmail.com</a>
+    <ul class="social-links">
+      <li><a href="#">Bilibili</a></li>
+      <li><a href="#">GitHub</a></li>
+      <li><a href="#">YouTube</a></li>
+      <li><a href="#">小红书</a></li>
+    </ul>
+  </section>
+
+  <footer>
+    <span>&copy; 2026 刘恩诚</span>
+    <span>Code is the new camera</span>
+  </footer>
+</main>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+<script>
+// ── CURSOR ──────────────────────────────────────────────
+const cursor = document.querySelector('.cursor');
+const cursorDot = document.querySelector('.cursor-dot');
+let mouseX = 0, mouseY = 0;
+let cursorX = 0, cursorY = 0;
+
+document.addEventListener('mousemove', (e) => {
+  mouseX = e.clientX;
+  mouseY = e.clientY;
+  cursorDot.style.transform = `translate(${mouseX - 2}px, ${mouseY - 2}px)`;
+});
+
+// Smooth cursor follow
+function animateCursor() {
+  cursorX += (mouseX - cursorX) * 0.1;
+  cursorY += (mouseY - cursorY) * 0.1;
+  cursor.style.transform = `translate(${cursorX - 10}px, ${cursorY - 10}px)`;
+  requestAnimationFrame(animateCursor);
+}
+animateCursor();
+
+// Hover effect
+document.querySelectorAll('a, .project-card, .play-btn').forEach(el => {
+  el.addEventListener('mouseenter', () => cursor.classList.add('hover'));
+  el.addEventListener('mouseleave', () => cursor.classList.remove('hover'));
+});
+
+// ── THREE.JS FLUID PARTICLES ────────────────────────────
+const canvas = document.getElementById('fluid-bg');
+const renderer = new THREE.WebGLRenderer({ canvas, alpha: true, antialias: true });
+renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+renderer.setSize(window.innerWidth, window.innerHeight);
+
+const scene = new THREE.Scene();
+const camera = new THREE.PerspectiveCamera(60, window.innerWidth / window.innerHeight, 0.1, 100);
+camera.position.z = 30;
+
+// Particle system
+const particleCount = 800;
+const geometry = new THREE.BufferGeometry();
+const positions = new Float32Array(particleCount * 3);
+const colors = new Float32Array(particleCount * 3);
+const sizes = new Float32Array(particleCount);
+const velocities = new Float32Array(particleCount * 3);
+const phases = new Float32Array(particleCount);
+
+const colorPalette = [
+  new THREE.Color('#78c8ff'),
+  new THREE.Color('#ff6b9d'),
+  new THREE.Color('#7b5ea7'),
+  new THREE.Color('#4ecdc4'),
+  new THREE.Color('#ffd93d'),
+];
+
+for (let i = 0; i < particleCount; i++) {
+  // Spherical distribution
+  const theta = Math.random() * Math.PI * 2;
+  const phi = Math.acos(2 * Math.random() - 1);
+  const r = 8 + Math.random() * 20;
+
+  positions[i * 3] = r * Math.sin(phi) * Math.cos(theta);
+  positions[i * 3 + 1] = r * Math.sin(phi) * Math.sin(theta);
+  positions[i * 3 + 2] = r * Math.cos(phi) - 5;
+
+  velocities[i * 3] = (Math.random() - 0.5) * 0.02;
+  velocities[i * 3 + 1] = (Math.random() - 0.5) * 0.02;
+  velocities[i * 3 + 2] = (Math.random() - 0.5) * 0.02;
+
+  const color = colorPalette[Math.floor(Math.random() * colorPalette.length)];
+  colors[i * 3] = color.r;
+  colors[i * 3 + 1] = color.g;
+  colors[i * 3 + 2] = color.b;
+
+  sizes[i] = Math.random() * 3 + 1;
+  phases[i] = Math.random() * Math.PI * 2;
+}
+
+geometry.setAttribute('position', new THREE.BufferAttribute(positions, 3));
+geometry.setAttribute('color', new THREE.BufferAttribute(colors, 3));
+geometry.setAttribute('size', new THREE.BufferAttribute(sizes, 1));
+
+// Shader material for glow
+const material = new THREE.ShaderMaterial({
+  uniforms: {
+    time: { value: 0 },
+    mousePos: { value: new THREE.Vector2(0, 0) },
+  },
+  vertexShader: `
+    attribute float size;
+    varying vec3 vColor;
+    varying float vAlpha;
+    uniform float time;
+    uniform vec2 mousePos;
+    void main() {
+      vColor = color;
+      vec4 mvPosition = modelViewMatrix * vec4(position, 1.0);
+      float dist = length(mvPosition.xyz);
+      gl_PointSize = size * (200.0 / -mvPosition.z);
+      gl_Position = projectionMatrix * mvPosition;
+      vAlpha = 0.5 + 0.5 * sin(position.x * 0.5 + position.y * 0.5 + time);
+    }
+  `,
+  fragmentShader: `
+    varying vec3 vColor;
+    varying float vAlpha;
+    void main() {
+      float d = length(gl_PointCoord - 0.5);
+      if (d > 0.5) discard;
+      float alpha = smoothstep(0.5, 0.0, d) * vAlpha * 0.7;
+      gl_FragColor = vec4(vColor, alpha);
+    }
+  `,
+  transparent: true,
+  depthWrite: false,
+  blending: THREE.AdditiveBlending,
+  vertexColors: true,
+});
+
+const particles = new THREE.Points(geometry, material);
+scene.add(particles);
+
+// Flow lines
+const lineCount = 40;
+const linesGroup = new THREE.Group();
+scene.add(linesGroup);
+
+for (let j = 0; j < lineCount; j++) {
+  const lineGeo = new THREE.BufferGeometry();
+  const linePoints = [];
+  const segments = 30;
+  const startAngle = Math.random() * Math.PI * 2;
+  const radius = 5 + Math.random() * 18;
+
+  for (let k = 0; k < segments; k++) {
+    const t = k / segments;
+    const angle = startAngle + t * Math.PI * (1.5 + Math.random());
+    const r = radius + Math.sin(t * Math.PI * 3) * 3;
+    linePoints.push(
+      Math.cos(angle) * r,
+      Math.sin(angle) * r * 0.6,
+      (t - 0.5) * 20
+    );
+  }
+
+  lineGeo.setAttribute('position', new THREE.Float32BufferAttribute(linePoints, 3));
+  const lineMat = new THREE.LineBasicMaterial({
+    color: colorPalette[Math.floor(Math.random() * colorPalette.length)],
+    transparent: true,
+    opacity: 0.08 + Math.random() * 0.1,
+    blending: THREE.AdditiveBlending,
+    depthWrite: false,
+  });
+  const line = new THREE.Line(lineGeo, lineMat);
+  line.userData = {
+    speed: 0.2 + Math.random() * 0.5,
+    axis: Math.random() > 0.5 ? 'y' : 'x',
+    phase: Math.random() * Math.PI * 2,
+  };
+  linesGroup.add(line);
+}
+
+// Mouse influence
+let targetMouseX = 0, targetMouseY = 0;
+document.addEventListener('mousemove', (e) => {
+  targetMouseX = (e.clientX / window.innerWidth) * 2 - 1;
+  targetMouseY = -(e.clientY / window.innerHeight) * 2 + 1;
+});
+
+// Animation loop
+const clock = new THREE.Clock();
+function animate() {
+  const t = clock.getElapsedTime();
+
+  // Smooth mouse
+  material.uniforms.mousePos.value.x += (targetMouseX - material.uniforms.mousePos.value.x) * 0.03;
+  material.uniforms.mousePos.value.y += (targetMouseY - material.uniforms.mousePos.value.y) * 0.03;
+  material.uniforms.time.value = t;
+
+  // Animate particles with non-linear flow
+  const posArr = geometry.attributes.position.array;
+  for (let i = 0; i < particleCount; i++) {
+    const i3 = i * 3;
+
+    // Perlin-like flow using nested sine waves (non-linear)
+    const flowX = Math.sin(posArr[i3 + 1] * 0.3 + t * 0.4 + phases[i]) * 0.03;
+    const flowY = Math.cos(posArr[i3] * 0.3 + t * 0.5 + phases[i]) * 0.03;
+    const flowZ = Math.sin(posArr[i3 + 2] * 0.2 + t * 0.3) * 0.02;
+
+    // Mouse attraction
+    const mx = material.uniforms.mousePos.value.x * 5;
+    const my = material.uniforms.mousePos.value.y * 5;
+
+    posArr[i3] += velocities[i3] + flowX + (mx - posArr[i3]) * 0.0005;
+    posArr[i3 + 1] += velocities[i3 + 1] + flowY + (my - posArr[i3 + 1]) * 0.0005;
+    posArr[i3 + 2] += velocities[i3 + 2] + flowZ;
+
+    // Soft boundary
+    const dist = Math.sqrt(
+      posArr[i3] ** 2 + posArr[i3 + 1] ** 2 + posArr[i3 + 2] ** 2
+    );
+    if (dist > 25) {
+      posArr[i3] *= 0.98;
+      posArr[i3 + 1] *= 0.98;
+      posArr[i3 + 2] *= 0.98;
+    }
+  }
+  geometry.attributes.position.needsUpdate = true;
+
+  // Rotate flow lines
+  linesGroup.children.forEach((line) => {
+    const ud = line.userData;
+    if (ud.axis === 'y') {
+      line.rotation.y += ud.speed * 0.003;
+    } else {
+      line.rotation.x += ud.speed * 0.003;
+    }
+    line.rotation.z += Math.sin(t * 0.5 + ud.phase) * 0.002;
+  });
+
+  // Subtle camera sway
+  camera.position.x += (material.uniforms.mousePos.value.x * 2 - camera.position.x) * 0.02;
+  camera.position.y += (material.uniforms.mousePos.value.y * 1.5 - camera.position.y) * 0.02;
+  camera.lookAt(scene.position);
+
+  renderer.render(scene, camera);
+  requestAnimationFrame(animate);
+}
+animate();
+
+// Resize
+window.addEventListener('resize', () => {
+  camera.aspect = window.innerWidth / window.innerHeight;
+  camera.updateProjectionMatrix();
+  renderer.setSize(window.innerWidth, window.innerHeight);
+});
+
+// ── SCROLL REVEAL ───────────────────────────────────────
+const revealEls = document.querySelectorAll('.reveal');
+const observer = new IntersectionObserver((entries) => {
+  entries.forEach(entry => {
+    if (entry.isIntersecting) {
+      entry.target.classList.add('visible');
+    }
+  });
+}, { threshold: 0.15, rootMargin: '0px 0px -50px 0px' });
+
+revealEls.forEach(el => observer.observe(el));
+
+// ── SMOOTH SCROLL ───────────────────────────────────────
+document.querySelectorAll('a[href^="#"]').forEach(anchor => {
+  anchor.addEventListener('click', (e) => {
+    e.preventDefault();
+    const target = document.querySelector(anchor.getAttribute('href'));
+    if (target) {
+      target.scrollIntoView({ behavior: 'smooth' });
+    }
+  });
+});
+
+// ── PROJECT CARD HOVER GLITCH ───────────────────────────
+document.querySelectorAll('.project-card').forEach(card => {
+  card.addEventListener('mouseenter', () => {
+    card.style.animation = 'glitch 0.3s ease-in-out';
+    setTimeout(() => { card.style.animation = ''; }, 300);
+  });
+});
+</script>
+</body>
+</html>
