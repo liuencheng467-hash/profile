@@ -348,6 +348,99 @@
     80% { transform: translate(1px, 1px); }
   }
 
+  /* Music control */
+  .music-control {
+    position: fixed; bottom: 2rem; right: 2rem;
+    z-index: 200;
+    width: 56px; height: 56px;
+    border-radius: 50%;
+    background: rgba(5,5,16,0.7);
+    backdrop-filter: blur(12px);
+    border: 1.5px solid rgba(120,200,255,0.3);
+    display: flex; align-items: center; justify-content: center;
+    cursor: pointer;
+    transition: all 0.4s cubic-bezier(0.16, 1, 0.3, 1);
+    box-shadow: 0 8px 32px rgba(0,0,0,0.4);
+  }
+  .music-control:hover {
+    border-color: #78c8ff;
+    transform: scale(1.1);
+    box-shadow: 0 8px 40px rgba(120,200,255,0.15);
+  }
+  .music-control svg {
+    width: 24px; height: 24px;
+    fill: none; stroke: #78c8ff; stroke-width: 2;
+    stroke-linecap: round; stroke-linejoin: round;
+  }
+  .music-control.paused svg {
+    stroke: rgba(255,255,255,0.3);
+  }
+  .music-control.playing .bar-group {
+    animation: musicPulse 1.2s ease-in-out infinite;
+  }
+  .music-control.playing .bar-group:nth-child(2) { animation-delay: 0.15s; }
+  .music-control.playing .bar-group:nth-child(3) { animation-delay: 0.3s; }
+  .music-control.playing .bar-group:nth-child(4) { animation-delay: 0.45s; }
+
+  @keyframes musicPulse {
+    0%, 100% { transform: scaleY(0.6); }
+    50% { transform: scaleY(1.4); }
+  }
+
+  /* Video player */
+  .reel-video {
+    width: 100%; height: 100%;
+    object-fit: cover;
+    display: block;
+  }
+  .reel-controls {
+    position: absolute; bottom: 0; left: 0; right: 0;
+    padding: 1.5rem 2rem;
+    background: linear-gradient(to top, rgba(5,5,16,0.85) 0%, transparent 100%);
+    display: flex; align-items: center; gap: 1rem;
+    opacity: 0; transition: opacity 0.4s;
+    pointer-events: none;
+  }
+  .reel-container:hover .reel-controls,
+  .reel-container.paused .reel-controls { opacity: 1; }
+
+  .reel-play-btn {
+    width: 44px; height: 44px;
+    border-radius: 50%;
+    border: 1.5px solid #78c8ff;
+    background: transparent;
+    color: #78c8ff;
+    display: flex; align-items: center; justify-content: center;
+    cursor: pointer; pointer-events: all;
+    transition: all 0.4s cubic-bezier(0.16, 1, 0.3, 1);
+    flex-shrink: 0;
+  }
+  .reel-play-btn:hover {
+    background: #78c8ff; color: #050510;
+  }
+  .reel-play-btn svg {
+    width: 18px; height: 18px;
+    fill: currentColor;
+  }
+
+  .reel-progress {
+    flex: 1; height: 3px;
+    background: rgba(255,255,255,0.15);
+    border-radius: 2px; cursor: pointer; pointer-events: all;
+    position: relative; overflow: hidden;
+  }
+  .reel-progress-bar {
+    height: 100%; width: 0%;
+    background: linear-gradient(90deg, #78c8ff, #7b5ea7);
+    border-radius: 2px;
+    transition: width 0.3s linear;
+  }
+  .reel-time {
+    font-size: 0.75rem; color: rgba(255,255,255,0.6);
+    font-variant-numeric: tabular-nums;
+    flex-shrink: 0; min-width: 80px;
+  }
+
   /* Animations */
   @keyframes revealWord {
     0% { transform: translateY(110%); }
@@ -403,6 +496,22 @@
     <li><a href="#contact">联系</a></li>
   </ul>
 </nav>
+
+<!-- Music Control -->
+<div class="music-control paused" id="musicBtn" title="播放音乐">
+  <svg viewBox="0 0 24 24">
+    <g class="bar-group" transform="translate(5,7)">
+      <rect x="0" y="0" width="3" height="10" rx="1.5" transform-origin="1.5 5"/>
+    </g>
+    <g class="bar-group" transform="translate(10.5,7)">
+      <rect x="0" y="0" width="3" height="10" rx="1.5" transform-origin="1.5 5"/>
+    </g>
+    <g class="bar-group" transform="translate(16,7)">
+      <rect x="0" y="0" width="3" height="10" rx="1.5" transform-origin="1.5 5"/>
+    </g>
+  </svg>
+</div>
+<audio id="bgMusic" loop src="music.m4a"></audio>
 
 <main class="main">
   <section class="hero">
@@ -519,10 +628,18 @@
       <span class="section-number">03</span>
       <h2 class="section-title">Showreel<br>2026</h2>
     </div>
-    <div class="reel-container">
-      <div class="reel-placeholder">
-        <div class="play-btn"></div>
-        <span class="reel-label">观看作品集锦 &mdash; 即将上线</span>
+    <div class="reel-container" id="reelPlayer">
+      <video class="reel-video" id="reelVideo" muted playsinline preload="metadata">
+        <source src="video.mp4" type="video/mp4">
+      </video>
+      <div class="reel-controls">
+        <button class="reel-play-btn" id="reelPlayBtn">
+          <svg viewBox="0 0 24 24"><polygon points="7,5 19,12 7,19"/></svg>
+        </button>
+        <div class="reel-progress" id="reelProgress">
+          <div class="reel-progress-bar" id="reelProgressBar"></div>
+        </div>
+        <span class="reel-time" id="reelTime">0:00 / 0:00</span>
       </div>
     </div>
   </section>
@@ -568,7 +685,7 @@ function animateCursor() {
 animateCursor();
 
 // Hover effect
-document.querySelectorAll('a, .project-card, .play-btn').forEach(el => {
+document.querySelectorAll('a, .project-card, .reel-play-btn, .music-control').forEach(el => {
   el.addEventListener('mouseenter', () => cursor.classList.add('hover'));
   el.addEventListener('mouseleave', () => cursor.classList.remove('hover'));
 });
@@ -812,6 +929,72 @@ document.querySelectorAll('.project-card').forEach(card => {
     setTimeout(() => { card.style.animation = ''; }, 300);
   });
 });
+
+// ── MUSIC CONTROL ───────────────────────────────────────
+(function() {
+  const btn = document.getElementById('musicBtn');
+  const audio = document.getElementById('bgMusic');
+  let playing = false;
+
+  btn.addEventListener('click', () => {
+    if (playing) {
+      audio.pause();
+      btn.classList.remove('playing');
+      btn.classList.add('paused');
+      btn.title = '播放音乐';
+    } else {
+      audio.play().then(() => {
+        btn.classList.remove('paused');
+        btn.classList.add('playing');
+        btn.title = '暂停音乐';
+      }).catch(() => {});
+    }
+    playing = !playing;
+  });
+})();
+
+// ── VIDEO PLAYER ────────────────────────────────────────
+(function() {
+  const video = document.getElementById('reelVideo');
+  const container = document.getElementById('reelPlayer');
+  const playBtn = document.getElementById('reelPlayBtn');
+  const progress = document.getElementById('reelProgress');
+  const progressBar = document.getElementById('reelProgressBar');
+  const timeDisplay = document.getElementById('reelTime');
+
+  function formatTime(s) {
+    if (isNaN(s) || !isFinite(s)) return '0:00';
+    const m = Math.floor(s / 60);
+    const sec = Math.floor(s % 60);
+    return m + ':' + (sec < 10 ? '0' : '') + sec;
+  }
+
+  function updateTime() {
+    timeDisplay.textContent = formatTime(video.currentTime) + ' / ' + formatTime(video.duration);
+    const pct = video.duration ? (video.currentTime / video.duration) * 100 : 0;
+    progressBar.style.width = pct + '%';
+  }
+
+  playBtn.addEventListener('click', (e) => {
+    e.stopPropagation();
+    if (video.paused) {
+      video.play();
+      container.classList.remove('paused');
+    } else {
+      video.pause();
+      container.classList.add('paused');
+    }
+  });
+
+  video.addEventListener('timeupdate', updateTime);
+  video.addEventListener('loadedmetadata', updateTime);
+
+  progress.addEventListener('click', (e) => {
+    const rect = progress.getBoundingClientRect();
+    const pct = (e.clientX - rect.left) / rect.width;
+    video.currentTime = pct * video.duration;
+  });
+})();
 </script>
 </body>
 </html>
